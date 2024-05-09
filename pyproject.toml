@@ -1,0 +1,182 @@
+[tool.poetry]
+name = "maya-umbrella-scanner"
+version = "0.0.0"
+description = "A portable version for maya umbrella scanner."
+authors = ["loonghao <hal.long@outlook.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "maya_umbrella_scanner" },
+]
+[tool.poetry.dependencies]
+python = "^3.9"
+maya-umbrella = "^0.7.0"
+nox = "^2024.4.15"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py36', 'py37', 'py38', 'py39']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.nox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | maya_umbrella_scanner/_vendor
+    | dist
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''
+
+[tool.isort]
+profile = "black"
+atomic = true
+include_trailing_comma = true
+lines_after_imports = 2
+lines_between_types = 1
+use_parentheses = true
+src_paths = ["maya_umbrella_scanner", "tests"]
+filter_files = true
+known_first_party = "maya_umbrella_scanner"
+
+# Enforce import section headers.
+import_heading_future = "Import future modules"
+import_heading_stdlib = "Import built-in modules"
+import_heading_thirdparty = "Import third-party modules"
+import_heading_firstparty = "Import local modules"
+
+force_sort_within_sections = true
+force_single_line = true
+
+# All project unrelated unknown imports belong to third-party.
+default_section = "THIRDPARTY"
+skip_glob = ["*/docs/conf.py", "*/maya_umbrella_scanner/_vendor/*"]
+
+
+# https://beta.ruff.rs/docs/configuration/
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "dev",
+    "maya_umbrella_scanner/_vendor/",
+    "noxfile.py",
+]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = [
+    "Q",
+    "RUF100",
+    "C90",
+    "UP",
+    "I",
+    "D",
+    "DTZ005", # https://docs.astral.sh/ruff/rules/call-datetime-now-without-tzinfo/
+] # add "T" to disallow prints
+flake8-quotes = { inline-quotes = "double", multiline-quotes = "double" }
+mccabe = { max-complexity = 14 }
+ignore = [
+    "I001",
+    "D107", # ignore missing docstring in __init__ methods
+    "D100", # ignore missing docstring in module
+    "D101",
+    "D102",
+    "D103", # ignore missing docstring in public class
+    "D104", # ignore missing docstring in public package
+    "D105", # ignore missing docstring in magic methods
+    "C901", # ignore too complex functions, doesn't seem to be worth it
+    "UP032",
+    "UP004",
+    "UP025",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D"]
+"docs/*.py" = ["D"]
+"dev/*.py" = ["D"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
+
+
+######################################################################################
+# vendoring
+[tool.vendoring]
+destination = "maya_umbrella_scanner/_vendor/"
+requirements = "maya_umbrella_scanner/_vendor/vendor.txt"
+namespace = "maya_umbrella_scanner._vendor"
+protected-files = ["__init__.py", "README.rst", "vendor.txt"]
+
+[tool.vendoring.transformations]
+drop = [
+    # contains unnecessary scripts
+    "bin/",
+    # interpreter and OS specific msgpack libs
+    "msgpack/*.so",
+    # unneeded parts of setuptools
+    "easy_install.py",
+    "setuptools",
+    "pkg_resources/_vendor/",
+    "_distutils_hack",
+    "distutils-precedence.pth",
+    "pkg_resources/extern/",
+    # trim vendored pygments styles and lexers
+    "pygments/styles/[!_]*.py",
+    '^pygments/lexers/(?!python|__init__|_mapping).*\.py$',
+]
+
+[tool.vendoring.typing-stubs]
+six = ["six.__init__", "six.moves.__init__", "six.moves.configparser"]
+distro = []
+
+[tool.vendoring.license.directories]
+setuptools = "pkg_resources"
+
+[tool.vendoring.license.fallback-urls]
+distlib = "https://bitbucket.org/pypa/distlib/raw/master/LICENSE.txt"
+webencodings = "https://github.com/SimonSapin/python-webencodings/raw/master/LICENSE"
