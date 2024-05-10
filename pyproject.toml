@@ -10,9 +10,8 @@ packages = [
 ]
 [tool.poetry.dependencies]
 python = "^3.9"
-maya-umbrella = "^0.7.0"
-nox = "^2024.4.15"
-
+maya-umbrella = "^0.11.0"
+click = "^8.1.7"
 
 [build-system]
 requires = ["poetry-core"]
@@ -90,6 +89,8 @@ exclude = [
     ".tox",
     ".venv",
     ".vscode",
+    ".zip",
+    ".nox",
     "__pypackages__",
     "_build",
     "buck-out",
