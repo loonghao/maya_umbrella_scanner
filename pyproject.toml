@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "maya-umbrella-scanner"
-version = "0.1.0"
+version = "0.1.1"
 description = "A portable version for maya umbrella scanner."
 authors = ["loonghao <hal.long@outlook.com>"]
 license = "MIT"
@@ -15,7 +15,7 @@ click = "^8.1.7"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.1.0"
+version = "0.1.1"
 tag_format = "v$version"
 version_files = [
     "pyproject.toml:version",
