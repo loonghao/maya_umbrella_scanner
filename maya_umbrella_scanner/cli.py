@@ -17,7 +17,7 @@ from maya_umbrella_scanner.template import RUNNER_TEMPLATE
 
 
 def main():
-    """Main entry point."""
+    """Main entry point for the script. Parses command line arguments and runs the appropriate functions."""
     args = argparse.ArgumentParser()
     args.add_argument("--maya-version", type=str)
     args.add_argument("--path", type=str, required=True)
