@@ -1,3 +1,4 @@
+# Template for the runner script.
 RUNNER_TEMPLATE = """
 import sys
 
@@ -15,6 +16,7 @@ if __name__ == '__main__':
 
 """
 
+# Template for the batch file.
 BAT_TEMPLATE = """
 @echo off
 set PYTHONPATH=%PYTHONPATH%;{PYTHONPATH}
