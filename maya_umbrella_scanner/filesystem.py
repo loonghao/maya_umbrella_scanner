@@ -11,7 +11,11 @@ from maya_umbrella.signatures import JOB_SCRIPTS_VIRUS_SIGNATURES
 
 
 def this_root():
-    """Returns the root directory of the current Maya installation."""
+    """Returns the root directory of the current Maya installation.
+
+    Returns:
+        str: The root directory of the current Maya installation.
+    """
     path = sys.executable
     if "maya_umbrella.exe" in path:
         return os.path.dirname(path)
@@ -20,18 +24,36 @@ def this_root():
 
 
 def assemble_env_paths(*paths):
-    """Assembles a list of paths to be used in the environment PATH variable."""
+    """Assemble environment paths separated by a semicolon.
+
+    Args:
+        *paths: Paths to be assembled.
+
+    Returns:
+        str: Assembled paths separated by a semicolon.
+    """
     return ";".join(paths)
 
 
 def get_rg_exe():
-    """Assembles the path to the rg executable."""
+    """Assembles the path to the rg (ripgrep) executable.
+
+    Returns:
+        str: The path to the rg executable.
+    """
     root = this_root()
     return os.path.join(root, "bin", "rg.exe")
 
 
 def assemble_rg_varius_check_commands(path):
-    """Assembles the commands to run rg to check for varius."""
+    """Assemble the command to check for viruses in the given path.
+
+    Args:
+        path (str): The path to check for viruses.
+
+    Returns:
+        str: The command to check for viruses in the given path.
+    """
     rg = get_rg_exe()
     signatures = JOB_SCRIPTS_VIRUS_SIGNATURES + FILE_VIRUS_SIGNATURES
     signatures = list(set(signatures))
