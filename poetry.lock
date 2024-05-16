@@ -27,26 +27,16 @@ files = [
 
 [[package]]
 name = "maya-umbrella"
-version = "0.11.0"
+version = "0.12.1"
 description = "Check and fix maya virus."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
 files = [
-    {file = "maya_umbrella-0.11.0-py2.py3-none-any.whl", hash = "sha256:ce443861023ef87b27e7af7910d09e6f3bfc44c1bf1c125ddc5084cc03c97bc4"},
-    {file = "maya_umbrella-0.11.0.tar.gz", hash = "sha256:b7d535b81370a53b66be4f975e9b9968ff0d77c6b044a65ca801853a0a58f9fe"},
-]
-
-[[package]]
-name = "ripgrepy"
-version = "2.0.0"
-description = ""
-optional = false
-python-versions = "*"
-files = [
-    {file = "ripgrepy-2.0.0.tar.gz", hash = "sha256:6dd871bafe859301097354d1f171540fbc9bd38d3f8f52f8a196dc28522085da"},
+    {file = "maya_umbrella-0.12.1-py2.py3-none-any.whl", hash = "sha256:6bd589a74a29bc7610157e696fe9700a9e21d678ab4b1f517ab7952be45cd2fa"},
+    {file = "maya_umbrella-0.12.1.tar.gz", hash = "sha256:f80aa386c62a3a31ec1965c3c721e5a7ac9f5937e949d8f0a2bd094d366579aa"},
 ]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "4b002fdc4011e2c892538f3ed536e52d860df16bb91273d4b61d48e038586a66"
+content-hash = "49b95a20775b372480ef58239b6ede4a25edabb096faa7e70b07d2823646ce0e"
