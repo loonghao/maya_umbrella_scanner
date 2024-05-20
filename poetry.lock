@@ -27,16 +27,16 @@ files = [
 
 [[package]]
 name = "maya-umbrella"
-version = "0.13.0"
+version = "0.14.0"
 description = "Check and fix maya virus."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
 files = [
-    {file = "maya_umbrella-0.13.0-py2.py3-none-any.whl", hash = "sha256:dad2907cef2e069306a2ec6e9979d8361db794b768aee0154fb97fb5dd32940d"},
-    {file = "maya_umbrella-0.13.0.tar.gz", hash = "sha256:a43b0420d80ce9109f9226317245bcb42aa448263865c077831de464b337f73e"},
+    {file = "maya_umbrella-0.14.0-py2.py3-none-any.whl", hash = "sha256:941c27daa31344056d3f172bc5addaafdb6594eaf7773e58e62c333e48e697d0"},
+    {file = "maya_umbrella-0.14.0.tar.gz", hash = "sha256:d89b5163860487f471a7100fb18f19aa5ee764626c416f198603cbe261942e30"},
 ]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "fe876e2b231caee7c5765a05b444ae481a9ae1b23f35a7c7b932cee609013894"
+content-hash = "b7c7919c96046e145a3391414fb4c8c2a5113e51246525d4f82ced10008d8b2d"
