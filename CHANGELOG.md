@@ -1,3 +1,10 @@
+## v0.1.4 (2024-07-22)
+
+### Fix
+
+- assemble maya python path
+- **deps**: update dependency maya-umbrella to v0.14.1
+
 ## v0.1.3 (2024-05-24)
 
 ### Fix
