@@ -6,7 +6,6 @@ import sys
 from tempfile import mkdtemp
 
 # Import third-party modules
-from maya_umbrella.filesystem import get_maya_install_root
 from maya_umbrella.signatures import FILE_VIRUS_SIGNATURES
 from maya_umbrella.signatures import JOB_SCRIPTS_VIRUS_SIGNATURES
 
@@ -96,8 +95,6 @@ def create_bat_file(maya_python, run_maya_py, infected_file, temp_dir):
         infected_file (str): Path to the file to be scanned for viruses.
         temp_dir (str): Path to the temporary directory to create the batch file in.
     """
-    maya_root = get_maya_install_root(maya_python)
-    maya_python = os.path.join(maya_root, "bin", "mayapy.exe")
     if not os.path.exists(maya_python):
         raise FileExistsError(f"Maya Python not found: {maya_python}")
     site_packages = os.path.join(this_root(), "lib", "site-packages")
