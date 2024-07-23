@@ -1,3 +1,9 @@
+## v0.1.5 (2024-07-23)
+
+### Refactor
+
+- improve logic for check check infected files
+
 ## v0.1.4 (2024-07-22)
 
 ### Fix
