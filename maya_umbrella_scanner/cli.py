@@ -23,6 +23,9 @@ def main():
     if not os.path.exists(options.path):
         raise click.ClickException(f"Path does not exist: {options.path}")
     infected_file = assemble_rg_varius_check_commands(options.path)
+    if not infected_file:
+        click.echo("No infected files found.")
+        sys.exit(0)
     if options.maya_version:
         maya_root = get_maya_install_root(options.maya_version)
         maya_python = os.path.join(maya_root, "bin", "mayapy.exe")

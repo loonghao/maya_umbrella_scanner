@@ -63,26 +63,29 @@ def assemble_rg_varius_check_commands(path):
     infected_file = os.path.join(mkdtemp("maya-umbrella"), "infected_file.txt")
     backup_folder_name = os.getenv("MAYA_UMBRELLA_BACKUP_FOLDER_NAME", "_virus")
     logger = logging.getLogger(__name__)
+    files = []
+    cmd = [
+        rg,
+        "-l",
+        "|".join(signatures),
+        path,
+        "--binary",
+        "--sort-files",
+        "-g",
+        "*.m[ab]",
+        "-g",
+        # Ignore _virus backup files.
+        f"!{backup_folder_name}"
+    ]
+    try:
+        files = subprocess.check_output(cmd)
+    except subprocess.CalledProcessError as e:
+        logger.error(e)
+        print(e)
+    if not files:
+        return
     with open(infected_file, "wb") as f:
-        cmd = [
-            rg,
-            "-l",
-            "|".join(signatures),
-            path,
-            "--binary",
-            "--sort-files",
-            "-g",
-            "*.m[ab]",
-            "-g",
-            # Ignore _virus backup files.
-            f"!{backup_folder_name}"
-        ]
-        try:
-            files = subprocess.check_output(cmd)
-            f.write(files)
-        except subprocess.CalledProcessError as e:
-            logger.error(e)
-            print(e)
+        f.write(files)
     return infected_file
 
 

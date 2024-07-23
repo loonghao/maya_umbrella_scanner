@@ -8,11 +8,9 @@ if __name__ == '__main__':
 
     print(sys.argv[-1])
     infected_file = sys.argv[-1]
-    with open(infected_file, "rb") as f:
-        files = f.readlines()
     with maya_standalone_context() as cmds:
         api = MayaVirusScanner()
-        api.scan_files_from_list(files)
+        api.scan_files_from_file(infected_file)
 
 """
 
