@@ -27,16 +27,16 @@ files = [
 
 [[package]]
 name = "maya-umbrella"
-version = "0.16.0"
+version = "0.18.0"
 description = "A better Autodesk Maya antivirus tool detects and removes malicious."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
 files = [
-    {file = "maya_umbrella-0.16.0-py2.py3-none-any.whl", hash = "sha256:0c3e2355740a407ef6ce48b07c06e243633fac09493f09cabcf6fbc0c8de2437"},
-    {file = "maya_umbrella-0.16.0.tar.gz", hash = "sha256:14651e23eedb9b8c994baede1fb447c0616435566d7c02e7d75312ca9188b0ad"},
+    {file = "maya_umbrella-0.18.0-py2.py3-none-any.whl", hash = "sha256:4c37a40e1de4fa85f39ec622af66d04c840c5b6531beb56ca33c7fb48859ee93"},
+    {file = "maya_umbrella-0.18.0.tar.gz", hash = "sha256:7691c922436b3ed78bb52370f50d8dcdae3329ef791c08eeb2cf62b6abd9934f"},
 ]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "6da6b06718c0b10e1afa82957455d45ea0252e312ff7f4019bece2ec41e47535"
+content-hash = "8fd4db124a60b6459d382e04fd0a2c761154250fa21b92b98f12020c64908449"

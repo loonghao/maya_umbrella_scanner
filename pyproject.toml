@@ -10,7 +10,7 @@ packages = [
 ]
 [tool.poetry.dependencies]
 python = "^3.9"
-maya-umbrella = "^0.16.0"
+maya-umbrella = "^0.18.0"
 click = "^8.1.7"
 
 [tool.commitizen]
