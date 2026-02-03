@@ -1,3 +1,9 @@
+## v0.1.8 (2026-02-03)
+
+### Fix
+
+- **deps**: update dependency maya-umbrella to ^0.18.0
+
 ## v0.1.7 (2025-12-09)
 
 ### Fix
