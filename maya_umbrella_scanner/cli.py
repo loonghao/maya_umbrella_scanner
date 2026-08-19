@@ -11,6 +11,7 @@ import click
 from maya_umbrella.filesystem import get_maya_install_root
 
 # Import local modules
+from maya_umbrella_scanner.__version__ import __version__
 from maya_umbrella_scanner.filesystem import VirusScanError
 from maya_umbrella_scanner.filesystem import assemble_rg_varius_check_commands
 from maya_umbrella_scanner.filesystem import isolated_maya_environment
@@ -86,9 +87,28 @@ def resolve_maya_python(maya_version):
     raise click.ClickException(f"Maya {maya_version} could not be bound to an exact mayapy.exe: {details}")
 
 
-def main():
-    """Main entry point for the script. Parses command line arguments and runs the appropriate functions."""
-    args = argparse.ArgumentParser()
+def main(argv=None):
+    """Run the portable batch CLI or the backward-compatible single-root interface."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] in {"scan", "clean"}:
+        # Import lazily so legacy invocations keep their existing startup path.
+        # Import local modules
+        from maya_umbrella_scanner.batch_cli import main as batch_main
+
+        raise SystemExit(batch_main(arguments))
+
+    args = argparse.ArgumentParser(
+        description="Portable Maya scene antivirus scanner",
+        epilog=(
+            "For guarded batch operations use: maya_umbrella scan --help "
+            "or maya_umbrella clean --help"
+        ),
+    )
+    args.add_argument(
+        "--version",
+        action="version",
+        version=f"maya-umbrella-scanner {__version__}",
+    )
     args.add_argument("--maya-version", type=str)
     args.add_argument("--path", type=str, required=True)
     args.add_argument(
@@ -101,7 +121,7 @@ def main():
         type=str,
         help="SHA-256 of the approved report content validated by the Agent Skill",
     )
-    options = args.parse_args(sys.argv[1:])
+    options = args.parse_args(arguments)
     if bool(options.approved_scan_report) != bool(options.approved_scan_report_sha256):
         raise click.ClickException(
             "--approved-scan-report and --approved-scan-report-sha256 must be provided together."

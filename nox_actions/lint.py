@@ -8,7 +8,6 @@ ISORT_TARGETS = (
     "nox_actions",
     "tests",
     "noxfile.py",
-    "skills/maya-umbrella-batch-antivirus/scripts/batch_scan.py",
 )
 
 

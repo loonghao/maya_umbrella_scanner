@@ -12,7 +12,27 @@ import click
 import pytest
 
 # Import local modules
+from maya_umbrella_scanner import batch_cli
 from maya_umbrella_scanner import cli
+
+
+def test_portable_cli_reports_version(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(["--version"])
+
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"maya-umbrella-scanner {cli.__version__}"
+
+
+def test_portable_cli_dispatches_batch_subcommands(monkeypatch):
+    received = []
+    monkeypatch.setattr(batch_cli, "main", lambda arguments: received.append(arguments) or 7)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(["scan", "--path", r"C:\scenes"])
+
+    assert exc_info.value.code == 7
+    assert received == [["scan", "--path", r"C:\scenes"]]
 
 
 def test_cleanup_propagates_maya_failure(monkeypatch, tmp_path):

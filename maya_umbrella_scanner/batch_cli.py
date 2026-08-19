@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
-"""Guarded batch runner for the maya_umbrella portable scanner.
+"""Guarded batch commands embedded in the portable scanner executable.
 
-The runner keeps file names as subprocess arguments, never shell text. Cleanup is
-serial, backup-preserving, and followed by a fresh signature scan.
+The commands keep file names as subprocess arguments, never shell text. Cleanup
+is serial, backup-preserving, and followed by a fresh signature scan.
 """
 
 # Import future modules
@@ -63,8 +62,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument(
         "--scanner",
-        default="maya_umbrella",
-        help="Path to maya_umbrella.exe or a PATH command (default: maya_umbrella)",
+        help="Override the scanner executable (default: this portable CLI)",
     )
     common.add_argument("--path", action="append", required=True, dest="paths", help="Target directory; repeatable")
     common.add_argument("--report", help="Optional JSON report path")
@@ -92,8 +90,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def resolve_scanner(value: str) -> str:
+def resolve_scanner(value: str | None) -> str:
     """Resolve a scanner path without invoking a shell."""
+    if value is None:
+        executable = Path(sys.executable)
+        if (
+            getattr(sys, "frozen", False)
+            or executable.stem.lower() in {"maya_umbrella", "maya-umbrella-scanner"}
+        ) and executable.is_file():
+            return str(executable.resolve())
+        value = "maya_umbrella"
     candidate = Path(value).expanduser()
     if candidate.is_file():
         return str(candidate.resolve())
