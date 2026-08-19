@@ -153,7 +153,13 @@ def make_exe(dist):
     # collected files inside Python wheels. `add_python_resources()` adds these
     # objects to the binary, with a load location as defined by the packaging
     # policy's resource location attributes.
-    for resource in exe.pip_install(["maya-umbrella"]):
+    # Keep the bundled scanner engine aligned with poetry.lock and the
+    # behavior covered by this repository's tests.
+    for resource in exe.pip_install([
+        "maya-umbrella==0.18.0",
+        "click==8.1.7",
+        "colorama==0.4.6",
+    ]):
         resource.add_location = "filesystem-relative:lib/site-packages"
         exe.add_python_resource(resource)
 
@@ -162,7 +168,7 @@ def make_exe(dist):
     # `add_python_resources()` adds these objects to the binary, with a load
     # location as defined by the packaging policy's resource location
     # attributes.
-    for resource in exe.pip_install(["."]):
+    for resource in exe.pip_install(["--no-deps", "."]):
         #resource.add_location = "filesystem-relative:lib/site-packages"
         exe.add_python_resource(resource)
 

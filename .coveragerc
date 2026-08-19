@@ -1,6 +1,6 @@
 [run]
 branch = True
-source = maya_umbrella
+source = maya_umbrella_scanner
 
 [report]
 exclude_lines =
@@ -11,4 +11,3 @@ exclude_lines =
 ignore_errors = True
 omit =
     tests/*
-    maya_umbrella/maya_funs.py

@@ -10,8 +10,8 @@ packages = [
 ]
 [tool.poetry.dependencies]
 python = "^3.9"
-maya-umbrella = "^0.18.0"
-click = "^8.1.7"
+maya-umbrella = "0.18.0"
+click = "8.1.7"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
@@ -19,17 +19,18 @@ version = "0.1.8"
 tag_format = "v$version"
 version_files = [
     "pyproject.toml:version",
-    "maya_umbrella_scanner/__version__.py"
+    "maya_umbrella_scanner/__version__.py",
+    "plugin.json:version"
 ]
 
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core==2.2.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
-target-version = ['py310']
+target-version = ['py39']
 include = '\.pyi?$'
 exclude = '''
 
@@ -80,6 +81,7 @@ skip_glob = ["*/docs/conf.py", "*/maya_umbrella_scanner/_vendor/*"]
 
 # https://beta.ruff.rs/docs/configuration/
 [tool.ruff]
+target-version = "py39"
 exclude = [
     ".bzr",
     ".direnv",

@@ -1,0 +1,38 @@
+name: ClawHub Skill
+
+on:
+  pull_request:
+    paths:
+      - "plugin.json"
+      - "skills/maya-umbrella-batch-antivirus/**"
+      - ".github/workflows/clawhub-skill.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: clawhub-skill-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dry-run:
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: openclaw/clawhub/.github/workflows/skill-publish.yml@36d26c73f42b98ec690352ed2767d0ca7cd78130
+    with:
+      skill_path: skills/maya-umbrella-batch-antivirus
+      owner: loonghao
+      dry_run: true
+
+  publish:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: openclaw/clawhub/.github/workflows/skill-publish.yml@36d26c73f42b98ec690352ed2767d0ca7cd78130
+    with:
+      skill_path: skills/maya-umbrella-batch-antivirus
+      owner: loonghao
+      dry_run: false
+    secrets:
+      clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
