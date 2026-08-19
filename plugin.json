@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "maya-umbrella-scanner",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Agent Skill for scanning known malware signatures in Autodesk Maya .ma/.mb scenes with a portable Windows x64 CLI and approval-gated cleanup.",
   "author": {
     "name": "loonghao",
