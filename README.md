@@ -1,25 +1,94 @@
-# maya_umbrella_scanner
+# Maya Umbrella Scanner — Autodesk Maya Scene Malware Scanner
 
-面向 Windows 的便携式 Maya 场景病毒扫描与清理 CLI。发布包通过 PyOxidizer 内嵌运行时，用户机器不需要安装系统 Python；清理仍需要本机已安装的 Autodesk Maya，因为场景修复必须在所选版本的 `mayapy.exe` 和 Maya API 中执行。
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+`maya_umbrella_scanner` is a portable Windows x64 CLI and Agent Skill for batch scanning and approval-gated cleanup of known malware in Autodesk Maya `.ma` and `.mb` scene files.
 
 > [!TIP]
-> **现已支持 Agent Skills。** 将 `maya-umbrella-batch-antivirus` 安装到 Codex、WorkBuddy 等支持 Agent Skills 的 Agent 后，即可用自然语言发起 Maya 场景病毒扫描与受控清理。Skill 会串联批量扫描、明确授权、备份校验和清理后复扫，让病毒查杀更高效、更安全。详见 [Agent Skill](#agent-skill)。
+> **Agent Skills are supported.** If your Codex, WorkBuddy, or another client version supports Agent Skills, install `maya-umbrella-batch-antivirus` and request a Maya virus scan in natural language. The Skill coordinates scope confirmation, batch scanning, findings disclosure, explicit cleanup approval, backup verification, and an independent post-clean scan. This can reduce manual sequencing while preserving the safety gates.
 
-## 安装
+## What is Maya Umbrella Scanner?
 
-从 [GitHub Releases](https://github.com/loonghao/maya_umbrella_scanner/releases) 下载精确版本的 `maya_umbrella_scanner-<version>.zip` 和同一 Release 的 `SHA256SUMS`。校验 ZIP 的 SHA-256 后完整解压，保留 `maya_umbrella.exe`、`bin` 和 `lib` 的相对目录结构。它是一个无需外部 Python 的便携 CLI 包，不是单独一个可脱离配套文件运行的 PE。
+Maya Umbrella Scanner is a batch Maya virus scanner and controlled Maya antivirus workflow for Windows x64. It recursively checks exact directories for known signatures in Maya scene files. Scan mode does not launch Maya or rewrite scenes. Cleanup runs only after the findings are disclosed and approved, then uses the selected local Maya installation's `mayapy.exe` and Maya API to repair affected scenes.
 
-安装 Agent Skill 后，也可以让 Agent 在取得精确版本和下载位置的批准后运行 Skill 自带的校验安装器：
+The PyOxidizer release bundle embeds its Python runtime, so scanning does not require system Python. Cleanup still requires the exact Autodesk Maya year selected for the operation.
+
+> [!IMPORTANT]
+> This project handles Maya `.ma` and `.mb` scene malware. It is not a general system antivirus, and a clean scene report does not prove that Maya startup directories, the Maya installation, referenced files, or the rest of Windows are clean.
+
+## Project components
+
+| Name | Role |
+| --- | --- |
+| Maya Umbrella Scanner / `maya_umbrella_scanner` | Product and repository name |
+| `maya_umbrella.exe` | Portable Windows x64 batch CLI |
+| `maya-umbrella-scanner` | Agent Plugin name declared by [`plugin.json`](plugin.json) |
+| `maya-umbrella-batch-antivirus` | Installable [Agent Skill](skills/maya-umbrella-batch-antivirus/SKILL.md) |
+
+## Key capabilities
+
+- Scan multiple explicitly selected directories in one run by repeating `--path`.
+- Recursively inspect Maya `.ma` and `.mb` files without starting Maya in scan mode.
+- Bind cleanup authorization to the same executable, target set, report bytes, infected paths, and source SHA-256 values.
+- Create verified, no-clobber backups in adjacent `_virus` directories before any scene rewrite.
+- Isolate Maya cleanup from existing startup hooks and finish with full-scope plus independent post-clean scans.
+- Let Agent Skills-compatible clients, including supported Codex or WorkBuddy versions, orchestrate the workflow through a bounded Agent Skill.
+
+## Requirements
+
+| Task | Requirements |
+| --- | --- |
+| Scan | Windows x64 release bundle. No system Python or Autodesk Maya installation is required. |
+| Cleanup | The same release bundle plus a local Autodesk Maya installation for the explicitly selected year. |
+| Skill installation with `npx` | Node.js and npm are required only for this installation method, not for the scanner runtime. |
+| Skill-local CLI installer | Windows PowerShell 5.1 or later, `%LOCALAPPDATA%`, and the current non-administrator user. |
+
+## Installation
+
+### Install the Agent Skill
+
+Use the Skills CLI to install the repository's Skill. This example targets a global Codex installation; omit `--global` for project-level installation:
+
+```powershell
+npx --yes skills@1.5.23 add loonghao/maya_umbrella_scanner `
+  --skill maya-umbrella-batch-antivirus `
+  --agent codex `
+  --global `
+  --yes
+```
+
+For an Agent Skills-compatible WorkBuddy or another agent, import the same `maya-umbrella-batch-antivirus` Skill through that client's supported Skills entrypoint. The command above is specifically a Codex example.
+
+If a compatible CLI is not installed, the Skill first shows the exact repository, release version, ZIP asset, checksum asset, and destination. After you approve that download, it runs its verified installer with the exact version:
 
 ```powershell
 & "<skill-directory>\scripts\install_cli.ps1" -Version "<approved-version>"
 ```
 
-安装器不会隐式选择 `latest`，不会覆盖已安装版本，并以 JSON 返回已验证的 `maya_umbrella.exe` 路径。它固定安装到 `%LOCALAPPDATA%\maya_umbrella_scanner\versions\<version>`，应以当前用户运行，不要使用提权的管理员 PowerShell。
+The installer never selects `latest`, never overwrites an installed version, and returns the verified `maya_umbrella.exe` path as JSON. It installs to `%LOCALAPPDATA%\maya_umbrella_scanner\versions\<version>`. Run it as the current user, not from an elevated administrator PowerShell.
 
-## 用法
+### Install the portable CLI manually
 
-先确认便携 CLI 具备批量安全契约：
+Download the exact `maya_umbrella_scanner-<version>.zip` and `SHA256SUMS` from the same [GitHub Release](https://github.com/loonghao/maya_umbrella_scanner/releases). Verify the ZIP's SHA-256, then extract the complete archive.
+
+Keep the relative layout of `maya_umbrella.exe`, `bin`, and `lib`. The archive is a portable CLI bundle, not a standalone PE that can be separated from its companion files.
+
+## How to scan and clean Maya scene malware
+
+### Use an Agent Skills-compatible client (Codex, WorkBuddy, or another agent)
+
+After installing the Skill, submit a bounded natural-language request:
+
+```text
+Use the maya-umbrella-batch-antivirus Skill to scan C:\project\scenes for Maya scene malware.
+Show me the findings and report first. Do not clean anything without my explicit approval.
+```
+
+Intent selects the Skill; it does not authorize cleanup. Even when the request says “clean,” “remove,” or “antivirus,” the Skill scans first, discloses the exact findings and side effects, and waits for explicit approval.
+
+### Verify the CLI contract
+
+Require the batch commands and approval arguments introduced with the v0.2.0 batch contract. Probe capabilities instead of trusting a version string alone:
 
 ```powershell
 .\maya_umbrella.exe --version
@@ -27,9 +96,11 @@
 .\maya_umbrella.exe clean --help
 ```
 
-### 病毒扫描
+The executable must expose `scan`, `clean`, `--approved-scan-report`, and `--approved-scan-report-sha256`. The Skill must reject releases without that contract, including v0.1.8 and earlier, and must never fall back to the legacy single-root interface.
 
-重复 `--path` 可以扫描多个目录。程序递归检查目录下的 `.ma` 和 `.mb` 文件；扫描模式不会启动 Maya 或改写场景。
+### Scan Maya scenes
+
+Repeat `--path` to scan multiple exact directories. Every supplied `--report` must be a fresh, not-yet-existing `.json` path. A report is required when cleanup may follow:
 
 ```powershell
 .\maya_umbrella.exe scan `
@@ -38,11 +109,13 @@
   --report "C:\temp\maya-umbrella-scan.json"
 ```
 
-命中时，JSON 报告记录文件路径与源 SHA-256；stdout 中的 `report_file_sha256` 绑定报告的精确字节。计划清理时必须把报告、摘要、命中文件和目标范围一起交给用户明确批准。
+The report records each infected path and source SHA-256. The stdout JSON contains `report_file_sha256`, which binds the exact report bytes. Before cleanup, disclose the resolved roots, scanner path and version, infected-file list, source hashes, report digest, selected Maya year, and cleanup side effects.
 
-### 自动杀毒
+Scan mode does not start Maya or rewrite scenes, although it may create temporary output and the requested report. A scan can cover an unusually broad root only after that exact scope is confirmed.
 
-清理必须使用同一个 CLI、同一组路径、用户批准的原始报告与摘要，并指定本机 Maya 年份：
+### Clean only after explicit approval
+
+After the user approves the disclosed findings and effects, use the same executable, the same paths, the unchanged approved report and digest, and one explicitly selected Maya year:
 
 ```powershell
 .\maya_umbrella.exe clean `
@@ -55,45 +128,50 @@
   --report "C:\temp\maya-umbrella-clean.json"
 ```
 
-没有批准证据的直接 `--maya-version` 调用会失败关闭。`--confirm-clean` 只是命令行门禁，不能代替用户对具体范围和副作用的知情批准。
+`--confirm-clean` is a CLI guard, not a substitute for informed approval of the exact scope and side effects. The cleanup target can never be a drive root or the user's home directory, even if requested. Cleanup also rejects symlinks, junctions, and reparse points.
 
-清理会先把原场景备份到相邻的 `_virus` 目录，再原地保存修复后的场景，并在结束前重新扫描。请勿设置 `MAYA_UMBRELLA_IGNORE_BACKUP=true`。
+Cleanup force-saves repaired scenes in place after staging and verifying adjacent `_virus` backups. It stops on drift, backup collision, identity alias, hash mismatch, insufficient evidence, or an indeterminate target.
 
-Maya 打开场景后若以无回调的只读检查发现感染的引用文件，或发现批准场景清单之外的 Maya/Python 文件，本次清理会在场景改写前中止，并要求建立新的明确范围；清理引擎不会改写批准清单外的文件。
-
-Maya 2019–2021 的 Python 2 无法通过当前引擎安全保存非 ASCII 场景路径；受控清理会在备份或启动 Maya 前拒绝该组合。不要在批准后移动或重命名文件；如改用其他 Maya 版本，必须重新扫描并批准。
-
-## Agent Skill
-
-仓库根目录遵循 [Agent Plugins 1.0](https://agent-plugins.org/specification)：`plugin.json` 描述完整插件包，`skills/maya-umbrella-batch-antivirus` 是可独立安装的 [Agent Skill](https://agentskills.io/specification)。Agent Plugins 规范只定义包格式，不规定安装或发布服务。
-
-使用通用 Skills CLI 从 GitHub 安装指定 Skill。以下命令以 Codex 全局安装为例（项目级安装请去掉 `--global`）；WorkBuddy 等其他 Agent 请通过其支持的 Skills 安装入口导入同一个 Skill：
+Ensure no interactive Maya session is editing the target scenes during cleanup. After cleanup, run one additional independent scan with the same executable and paths and a third fresh report:
 
 ```powershell
-npx --yes skills@1.5.23 add loonghao/maya_umbrella_scanner `
-  --skill maya-umbrella-batch-antivirus `
-  --agent codex `
-  --global `
-  --yes
+.\maya_umbrella.exe scan `
+  --path "C:\project\scenes" `
+  --path "D:\shots\asset" `
+  --report "C:\temp\maya-umbrella-post-clean-scan.json"
 ```
 
-安装后，在 Codex、WorkBuddy 等 Agent 中直接提出自然语言请求，例如：
+Call the active scene scope clean only when cleanup completed without an indeterminate target, expected backups exist, the CLI's full-scope final scan succeeded, and the independent post-clean scan reports no remaining signatures.
 
-```text
-请扫描 C:\project\scenes 中的 Maya 场景病毒；先向我展示命中项和报告，未经我明确批准不要清理。
-```
+## Safety contract
 
-Skill 提供批量目录扫描、显式清理授权、备份哈希核验和清理后复扫。它只处理 Maya `.ma`/`.mb` 场景，不是通用系统杀毒软件。实际执行流程与风险边界见 `skills/maya-umbrella-batch-antivirus/SKILL.md`。
+The authoritative workflow is defined in the [Agent Skill](skills/maya-umbrella-batch-antivirus/SKILL.md) and its [operation contract](skills/maya-umbrella-batch-antivirus/references/operation-contract.md). The essential guarantees are:
 
-Agent 必须确认 `scan`/`clean` 子命令和两个批准参数都存在。v0.1.8 及更早版本不具备完整批量清理门禁，只能按旧版能力使用；Skill 会让不兼容版本在任何 Maya 场景被修改前失败关闭。每次 `--report` 都应使用一个尚不存在的 `.json` 路径，以保留独立审计证据；scan 在 stdout 输出的 `report_file_sha256` 必须与命中清单一起交给用户批准，并原样传给 clean。
+- Approval binds the scanner path, target set, report bytes, infected paths, and source hashes. The Maya year is an additional explicit cleanup parameter and approval item.
+- `_virus` is the fixed backup/quarantine directory. Do not set `MAYA_UMBRELLA_IGNORE_BACKUP=true` or customize `MAYA_UMBRELLA_BACKUP_FOLDER_NAME`.
+- Signature scans exclude `_virus`, which may contain infected original scene bytes. Preserve and quarantine those backups accordingly; a clean result does not prove the backup directory is clean.
+- Existing same-name backups are never overwritten. Preserve or relocate them only with approval, then scan again.
+- Cleanup pre-creates an empty `Maya.env`, uses an isolated temporary `MAYA_APP_DIR`, and disables Python user-site.
+- Existing `Maya.env`, `userSetup.py`, `userSetup.mel`, `.pth`, `sitecustomize.py`, module paths, plug-in paths, and custom script paths are not executed or deleted.
+- Infected references or Maya/Python files outside the approved scene manifest abort cleanup before scene modification. They require a separate scope and approval.
+- `indeterminate` is a failure state, never a clean result. A successful cleanup exit code alone is not sufficient verification.
 
-为避免把任意现有项目子树从扫描范围隐藏，备份/隔离目录固定为 `_virus`。自定义 `MAYA_UMBRELLA_BACKUP_FOLDER_NAME` 现会失败关闭；这是新版的安全性 breaking change。
+## Compatibility and limitations
 
-清理进程会预建空的 `Maya.env`，使用临时隔离的 `MAYA_APP_DIR`，并禁用 Python user-site；不会执行用户现有的 `Maya.env`、`userSetup.py`、`userSetup.mel`、`.pth`/`sitecustomize.py` 或自定义启动路径。只读检查可以报告相关 Maya/Python 目录中的匹配文件，但不会删除它们；这类文件需要另行批准检查和隔离，不能从场景复扫结果推断为安全。
+- The portable release targets Windows x64.
+- Scan mode does not require Maya. Cleanup requires the exact locally installed Maya year selected for that run.
+- Maya 2019–2021 use Python 2 and cannot safely save non-ASCII scene paths through the current engine. The CLI refuses that combination before backup or Maya startup.
+- Do not move, rename, or copy scenes after approval to work around a path failure. Selecting another Maya year requires a fresh scan and approval.
+- Saving through a newer Maya version can change scene compatibility.
+- The scanner detects the known signatures supported by its pinned engine; it does not provide a general malware-analysis guarantee.
+
+## Agent Plugin and Skill distribution
+
+The repository follows [Agent Plugins 1.0](https://agent-plugins.org/specification). [`plugin.json`](plugin.json) is the package manifest, and compatible clients discover the standalone [`skills/maya-umbrella-batch-antivirus/SKILL.md`](skills/maya-umbrella-batch-antivirus/SKILL.md) entrypoint from the fixed `skills/` layout. The Agent Plugins specification defines packaging, not a required installation or publishing service.
 
 ### ClawHub
 
-ClawHub 分发的是 Skill 子目录，不是仅含根 `plugin.json` 的完整 Agent Plugins 包。发布前先做 dry-run：
+ClawHub distributes the Skill directory rather than a package containing only the root manifest. Maintainers can validate a prospective publication with a pinned dry run:
 
 ```powershell
 npx --yes clawhub@0.23.3 skill publish .\skills\maya-umbrella-batch-antivirus `
@@ -104,16 +182,46 @@ npx --yes clawhub@0.23.3 skill publish .\skills\maya-umbrella-batch-antivirus `
   --json
 ```
 
-正式发布前先执行 `npx --yes clawhub@0.23.3 login`。仓库配置 `CLAWHUB_TOKEN` secret 后，每个正式（非 prerelease）GitHub Release 会自动运行 `ClawHub Skill` workflow；`workflow_dispatch` 仅允许从 `main` 手动首发或受控补发。工作流固定使用 ClawHub CLI 0.23.3，首次发布时设置 `security,operations` 分类与检索 topics，后续同步省略这两个参数以保持内容未变化时的幂等性。它保存结构化回执，并把 `pending-publication` 或 `submitted` 作为“已提交、等待公开验证”，而不是误报成上传失败。公开版本通过安全审核并可见后，可通过 CLI 安装：
+Run `npx --yes clawhub@0.23.3 login` before an authorized publication. With a configured `CLAWHUB_TOKEN` secret, every non-prerelease GitHub Release triggers the `ClawHub Skill` workflow; `workflow_dispatch` is restricted to `main` for a controlled initial or recovery publication. The workflow pins ClawHub CLI 0.23.3 and preserves structured receipts. A `pending-publication` or `submitted` receipt means the registry workflow accepted or recorded the submission, but public availability has not yet been verified.
+
+After a public version is confirmed visible, install it with:
 
 ```powershell
 openclaw skills install @loonghao/maya-umbrella-batch-antivirus
-# 或使用 ClawHub registry CLI
+# Or use the ClawHub registry CLI
 npx --yes clawhub@0.23.3 install @loonghao/maya-umbrella-batch-antivirus
 ```
 
-## 发布
+## Frequently asked questions
 
-版本与变更日志由 Release Please 从 Conventional Commits 统一维护。它同步 `pyproject.toml`、`maya_umbrella_scanner/__version__.py`、`plugin.json` 和 manifest，创建 `vX.Y.Z` 标签及 GitHub Release。标签工作流使用固定构建工具生成 Windows 便携包与 `SHA256SUMS`，只向 Release Please 已创建的 Release 附加资产。重跑不会覆盖已有资产；若上一次只成功上传 ZIP，会为该 ZIP 的确切字节补传校验文件，已有 ZIP 与校验文件不一致则失败关闭。
+### Can an Agent Skills-compatible Codex or WorkBuddy scan and clean Maya scene malware?
 
-运行时架构及没有直接全面改写 Rust 的原因见 [ADR 0001](docs/adr/0001-portable-cli-runtime.md)。
+Yes, when that client version supports Agent Skills and can access the Windows CLI. Install `maya-umbrella-batch-antivirus`, then ask it to scan an exact directory. Controlled cleanup still requires findings disclosure and explicit approval after the scan. The repository validates Skill discovery and the bounded workflow; it does not claim end-to-end validation for every Agent client version.
+
+### Does scanning modify Maya files?
+
+No. Scan mode does not launch Maya or rewrite scenes. It may write temporary output and a requested JSON report. Cleanup is a separate, approval-gated operation that force-saves repaired scenes after verified backups are staged.
+
+### Does it require Python or Autodesk Maya?
+
+The portable release embeds its Python runtime, so neither scanning nor cleanup requires system Python. Scanning does not require Maya. Cleanup requires the exact selected Autodesk Maya year because repair runs through that installation's `mayapy.exe` and Maya API.
+
+### Does it clean `userSetup.py` or the entire Maya installation?
+
+No. Read-only discovery can report matching external Maya/Python files, but this workflow does not delete them. A clean scene scan does not clear startup directories, the Maya installation, infected references, or other external files.
+
+### Is Maya Umbrella Scanner a general antivirus?
+
+No. It is a scoped Maya scene virus scanner for `.ma` and `.mb` files. Keep endpoint protection and broader Maya security controls in place.
+
+## Release and architecture
+
+Release Please owns versions and the changelog. It synchronizes `pyproject.toml`, `maya_umbrella_scanner/__version__.py`, `plugin.json`, and the release manifest, then creates a `vX.Y.Z` tag and GitHub Release. The tag workflow uses pinned build tools to produce the Windows portable ZIP and `SHA256SUMS`.
+
+Reruns never overwrite existing release assets. If an earlier run uploaded only the ZIP, a rerun can add the checksum for those exact bytes; a mismatch between an existing ZIP and checksum fails closed.
+
+See [ADR 0001](docs/adr/0001-portable-cli-runtime.md) for the runtime architecture and the decision not to perform an immediate full Rust rewrite.
+
+## License
+
+Maya Umbrella Scanner is released under the [MIT License](LICENSE).
