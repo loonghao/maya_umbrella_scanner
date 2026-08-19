@@ -1,11 +1,20 @@
 ---
 name: maya-umbrella-batch-antivirus
-description: Scan and clean batches of Autodesk Maya .ma and .mb files on Windows with Maya Umbrella; use for suspected Maya malware or explicitly requested batch remediation, not general-purpose antivirus work.
+description: Scan/clean Maya scene malware on Windows. Use for Maya杀毒, Maya病毒扫描, Maya病毒查杀, 清理Maya病毒, 病毒查杀, Maya antivirus, Maya virus scan/removal; not general antivirus.
+metadata:
+  openclaw:
+    os: [win32]
 ---
 
 # Maya Umbrella batch antivirus
 
 Use this skill only on Windows with the portable `maya_umbrella.exe` CLI and Autodesk Maya scene files. The release bundle embeds its runtime, so do not require or install system Python. Cleanup still requires a locally installed Autodesk Maya version because scene repair runs inside that exact Maya's `mayapy.exe`.
+
+## Interpret requests
+
+- Treat `Maya杀毒`, `Maya病毒扫描`, `Maya病毒查杀`, `清理Maya病毒`, `Maya antivirus`, `Maya virus scan`, and requests to remove malware from `.ma` or `.mb` scenes as this skill's intent.
+- If the request only says `病毒查杀`, `病毒扫描`, `杀毒`, `virus scan`, `virus removal`, or `antivirus` without Maya, `.ma`, `.mb`, or scene context, ask whether the target is Autodesk Maya scene files. Do not scan, download, or clean anything until that scope is confirmed.
+- Keywords select this skill; they do not authorize cleanup. Treat scan, check, or detect wording as scan-only. For clean, remove, fix, remediate, `杀毒`, or `清理`, scan first and follow the existing findings disclosure and explicit cleanup approval contract.
 
 Before use, run `maya_umbrella.exe --version`, `maya_umbrella.exe scan --help`, and `maya_umbrella.exe clean --help`. Require the batch subcommands plus `--approved-scan-report` and `--approved-scan-report-sha256`. If any capability is absent, stop and install a release containing this contract; do not bypass it with the legacy single-root interface.
 

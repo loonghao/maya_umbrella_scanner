@@ -5,34 +5,160 @@ on:
     paths:
       - "plugin.json"
       - "skills/maya-umbrella-batch-antivirus/**"
+      - ".github/scripts/validate_clawhub_publish.py"
       - ".github/workflows/clawhub-skill.yml"
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
-  group: clawhub-skill-${{ github.workflow }}-${{ github.ref }}
+  group: clawhub-skill-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  dry-run:
-    if: ${{ github.event_name == 'pull_request' }}
-    permissions:
-      contents: read
-      id-token: write
-    uses: openclaw/clawhub/.github/workflows/skill-publish.yml@36d26c73f42b98ec690352ed2767d0ca7cd78130
-    with:
-      skill_path: skills/maya-umbrella-batch-antivirus
-      owner: loonghao
-      dry_run: true
-
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name != 'release' || github.event.release.prerelease == false }}
+    name: ${{ github.event_name == 'pull_request' && 'Dry run' || 'Publish' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
-      id-token: write
-    uses: openclaw/clawhub/.github/workflows/skill-publish.yml@36d26c73f42b98ec690352ed2767d0ca7cd78130
-    with:
-      skill_path: skills/maya-umbrella-batch-antivirus
-      owner: loonghao
-      dry_run: false
-    secrets:
-      clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
+    env:
+      CLAWHUB_CLI_VERSION: "0.23.3"
+      CLAWHUB_DISABLE_TELEMETRY: "1"
+      SKILL_PATH: skills/maya-umbrella-batch-antivirus
+      SKILL_SLUG: maya-umbrella-batch-antivirus
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Install pinned ClawHub CLI
+        shell: bash
+        run: |
+          npm install --global --ignore-scripts --no-audit --no-fund \
+            "clawhub@$CLAWHUB_CLI_VERSION"
+          [[ "$(clawhub --cli-version)" == "$CLAWHUB_CLI_VERSION" ]]
+      - name: Verify source provenance
+        shell: bash
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
+          [[ -z "$(git status --short)" ]]
+      - name: Require merged manual publish source
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Manual ClawHub publishes must run from refs/heads/main."
+            exit 1
+          fi
+      - name: Require publish credentials
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [[ -z "$CLAWHUB_TOKEN" ]]; then
+            echo "::error::Real ClawHub publishes require the CLAWHUB_TOKEN repository secret."
+            exit 1
+          fi
+      - name: Write ephemeral ClawHub configuration
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          CLAWHUB_CONFIG_PATH: ${{ runner.temp }}/clawhub-config.json
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          fs.writeFileSync(
+            process.env.CLAWHUB_CONFIG_PATH,
+            JSON.stringify({ registry: "https://clawhub.ai", token: process.env.CLAWHUB_TOKEN }) + "\n",
+            { mode: 0o600 },
+          );
+          NODE
+      - name: Preview and optionally publish the Skill
+        env:
+          CLAWHUB_CONFIG_PATH: ${{ runner.temp }}/clawhub-config.json
+          PUBLISH: ${{ github.event_name != 'pull_request' }}
+          PREVIEW_PATH: ${{ runner.temp }}/clawhub-preview.json
+          RECEIPT_PATH: ${{ runner.temp }}/clawhub-publish.json
+        shell: bash
+        run: |
+          args=(
+            skill publish "$SKILL_PATH"
+            --owner loonghao
+            --tags latest
+            --source-repo "$GITHUB_REPOSITORY"
+            --source-commit "$GITHUB_SHA"
+            --source-ref "$GITHUB_REF"
+            --source-path "$SKILL_PATH"
+            --json
+          )
+
+          clawhub "${args[@]}" --dry-run > "$PREVIEW_PATH"
+          python3 .github/scripts/validate_clawhub_publish.py \
+            "$PREVIEW_PATH" \
+            --mode dry-run \
+            --expected-slug "$SKILL_SLUG"
+
+          if [[ "$PUBLISH" != "true" ]]; then
+            cp "$PREVIEW_PATH" "$RECEIPT_PATH"
+            exit 0
+          fi
+
+          if node -e '
+            const receipt = require(process.env.PREVIEW_PATH);
+            const publiclyCurrent =
+              receipt.status === "unchanged" && receipt.version === receipt.latestVersion;
+            process.exit(publiclyCurrent ? 0 : 1);
+          '; then
+            cp "$PREVIEW_PATH" "$RECEIPT_PATH"
+            exit 0
+          fi
+
+          publish_version="$(node -p 'require(process.env.PREVIEW_PATH).version')"
+          catalog_args=()
+          if node -e '
+            const receipt = require(process.env.PREVIEW_PATH);
+            const firstPublish = receipt.status === "would-publish" && receipt.latestVersion === null;
+            process.exit(firstPublish ? 0 : 1);
+          '; then
+            catalog_args=(
+              --categories security,operations
+              --topics maya,antivirus,malware,virus-scan,scene-cleanup
+            )
+          fi
+
+          clawhub "${args[@]}" --version "$publish_version" \
+            "${catalog_args[@]}" > "$RECEIPT_PATH"
+      - name: Validate ClawHub receipt
+        env:
+          MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || 'publish' }}
+          PREVIEW_PATH: ${{ runner.temp }}/clawhub-preview.json
+          RECEIPT_PATH: ${{ runner.temp }}/clawhub-publish.json
+        shell: bash
+        run: |
+          python3 .github/scripts/validate_clawhub_publish.py \
+            "$RECEIPT_PATH" \
+            --mode "$MODE" \
+            --expected-slug "$SKILL_SLUG" \
+            --preview "$PREVIEW_PATH"
+      - name: Remove ephemeral ClawHub configuration
+        if: ${{ always() && github.event_name != 'pull_request' }}
+        env:
+          CLAWHUB_CONFIG_PATH: ${{ runner.temp }}/clawhub-config.json
+        shell: bash
+        run: rm -f -- "$CLAWHUB_CONFIG_PATH"
+      - name: Preserve ClawHub receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: clawhub-${{ github.event_name }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/clawhub-preview.json
+            ${{ runner.temp }}/clawhub-publish.json
+          if-no-files-found: warn
+          retention-days: 30
