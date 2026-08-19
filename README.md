@@ -2,6 +2,9 @@
 
 面向 Windows 的便携式 Maya 场景病毒扫描与清理 CLI。发布包通过 PyOxidizer 内嵌运行时，用户机器不需要安装系统 Python；清理仍需要本机已安装的 Autodesk Maya，因为场景修复必须在所选版本的 `mayapy.exe` 和 Maya API 中执行。
 
+> [!TIP]
+> **现已支持 Agent Skills。** 将 `maya-umbrella-batch-antivirus` 安装到 Codex、WorkBuddy 等支持 Agent Skills 的 Agent 后，即可用自然语言发起 Maya 场景病毒扫描与受控清理。Skill 会串联批量扫描、明确授权、备份校验和清理后复扫，让病毒查杀更高效、更安全。详见 [Agent Skill](#agent-skill)。
+
 ## 安装
 
 从 [GitHub Releases](https://github.com/loonghao/maya_umbrella_scanner/releases) 下载精确版本的 `maya_umbrella_scanner-<version>.zip` 和同一 Release 的 `SHA256SUMS`。校验 ZIP 的 SHA-256 后完整解压，保留 `maya_umbrella.exe`、`bin` 和 `lib` 的相对目录结构。它是一个无需外部 Python 的便携 CLI 包，不是单独一个可脱离配套文件运行的 PE。
@@ -64,7 +67,7 @@ Maya 2019–2021 的 Python 2 无法通过当前引擎安全保存非 ASCII 场�
 
 仓库根目录遵循 [Agent Plugins 1.0](https://agent-plugins.org/specification)：`plugin.json` 描述完整插件包，`skills/maya-umbrella-batch-antivirus` 是可独立安装的 [Agent Skill](https://agentskills.io/specification)。Agent Plugins 规范只定义包格式，不规定安装或发布服务。
 
-使用通用 Skills CLI 从 GitHub 安装指定 Skill（项目级安装请去掉 `--global`）：
+使用通用 Skills CLI 从 GitHub 安装指定 Skill。以下命令以 Codex 全局安装为例（项目级安装请去掉 `--global`）；WorkBuddy 等其他 Agent 请通过其支持的 Skills 安装入口导入同一个 Skill：
 
 ```powershell
 npx --yes skills@1.5.23 add loonghao/maya_umbrella_scanner `
@@ -72,6 +75,12 @@ npx --yes skills@1.5.23 add loonghao/maya_umbrella_scanner `
   --agent codex `
   --global `
   --yes
+```
+
+安装后，在 Codex、WorkBuddy 等 Agent 中直接提出自然语言请求，例如：
+
+```text
+请扫描 C:\project\scenes 中的 Maya 场景病毒；先向我展示命中项和报告，未经我明确批准不要清理。
 ```
 
 Skill 提供批量目录扫描、显式清理授权、备份哈希核验和清理后复扫。它只处理 Maya `.ma`/`.mb` 场景，不是通用系统杀毒软件。实际执行流程与风险边界见 `skills/maya-umbrella-batch-antivirus/SKILL.md`。
