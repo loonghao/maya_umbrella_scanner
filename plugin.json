@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "maya-umbrella-scanner",
+  "version": "0.1.8",
+  "description": "Scan and remediate malware in Autodesk Maya scene files on Windows.",
+  "author": {
+    "name": "loonghao",
+    "email": "hal.long@outlook.com",
+    "url": "https://github.com/loonghao"
+  },
+  "homepage": "https://github.com/loonghao/maya_umbrella_scanner",
+  "repository": "https://github.com/loonghao/maya_umbrella_scanner",
+  "license": "MIT",
+  "keywords": [
+    "maya",
+    "antivirus",
+    "malware",
+    "batch-scanning",
+    "windows"
+  ]
+}

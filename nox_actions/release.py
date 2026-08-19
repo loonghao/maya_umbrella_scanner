@@ -1,10 +1,10 @@
 # Import built-in modules
 import argparse
+from collections.abc import Iterator
 import os
 from pathlib import Path
 import shutil
-from typing import Iterator
-from typing import Tuple
+import subprocess
 import zipfile
 
 # Import third-party modules
@@ -66,7 +66,7 @@ def vendoring(session: nox.Session) -> None:
         session.run("vendoring", "sync", "-v")
         return
 
-    def pinned_requirements(path: Path) -> Iterator[Tuple[str, str]]:
+    def pinned_requirements(path: Path) -> Iterator[tuple[str, str]]:
         for line in path.read_text().splitlines(keepends=False):
             one, sep, two = line.partition("==")
             if not sep:
@@ -104,16 +104,33 @@ def vendoring(session: nox.Session) -> None:
         session.run("vendoring", "sync", ".")
 
 
-@nox.session(name="build-exe", reuse_venv=True)
 def build_exe(session: nox.Session) -> None:
     parser = argparse.ArgumentParser(prog="nox -s build-exe --release")
     parser.add_argument("--release", action="store_true")
     parser.add_argument("--version", default="0.5.0", help="Version to use for the zip file")
     args = parser.parse_args(session.posargs)
     build_root = os.path.join(THIS_ROOT, "build", "x86_64-pc-windows-msvc", "release", "install")
-    session.install("pyoxidizer")
+    session.install("pyoxidizer==0.24.0")
     session.run("pyoxidizer", "build", "install", "--path", THIS_ROOT, "--release")
     shutil.copytree(os.path.join(THIS_ROOT, "bin"), os.path.join(build_root, "bin"))
+    site_packages = Path(build_root, "lib", "site-packages")
+    expected_distributions = {
+        "maya_umbrella": "0.18.0",
+        "click": "8.1.7",
+        "colorama": "0.4.6",
+    }
+    for distribution, version in expected_distributions.items():
+        actual = sorted(path.name for path in site_packages.glob(f"{distribution}-*.dist-info"))
+        expected = [f"{distribution}-{version}.dist-info"]
+        if actual != expected:
+            session.error(f"Expected bundled distribution {expected}, found {actual}")
+    executable = Path(build_root, "maya_umbrella.exe")
+    help_result = subprocess.run([executable, "--help"], capture_output=True, text=True, check=False)
+    if help_result.returncode or not {
+        "--approved-scan-report",
+        "--approved-scan-report-sha256",
+    }.issubset(help_result.stdout.split()):
+        session.error("Built scanner does not expose the guarded cleanup contract.")
     if args.release:
         temp_dir = os.path.join(THIS_ROOT, ".zip")
         shutil.rmtree(temp_dir, ignore_errors=True)

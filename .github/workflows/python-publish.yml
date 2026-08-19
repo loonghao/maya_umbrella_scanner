@@ -11,7 +11,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        os: [ 'windows-2019' ]
+        os: [ 'windows-2022' ]
         python-version: ["3.10"]
       fail-fast: false
     permissions:
@@ -21,49 +21,38 @@ jobs:
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       with:
-        token: "${{ secrets.GITHUB_TOKEN }}"
         fetch-depth: 0
-        ref: main
-    - uses: olegtarasov/get-tag@v2.1.3
-      id: get_tag_name
-      with:
-        tagRegex: "v(?<version>.*)"
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       with:
-        python-version: '3.x'
+        python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements-dev.txt
+        python -m pip install poetry==2.2.1 nox==2026.2.9
         poetry --version
         poetry build
+    - name: Verify tag version
+      id: release_version
+      shell: pwsh
+      run: |
+        $tagVersion = "${{ github.ref_name }}" -replace '^v', ''
+        $projectVersion = poetry version --short
+        if ($tagVersion -ne $projectVersion) {
+          throw "Tag version $tagVersion does not match project version $projectVersion"
+        }
+        "version=$tagVersion" >> $env:GITHUB_OUTPUT
     - name: build exe
       id: build_exe
       run: |
-        nox -s build-exe -- --release --version ${{ steps.get_tag_name.outputs.version }}
-    - name: Generate changelog
-      id: changelog
-      uses: jaywcjlove/changelog-generator@main
+        nox -s build-exe -- --release --version ${{ steps.release_version.outputs.version }}
+    - name: Generate artifact checksum
+      shell: pwsh
+      run: |
+        $archive = Get-Item ".zip/maya_umbrella_scanner-${{ steps.release_version.outputs.version }}.zip"
+        $hash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$hash  $($archive.Name)" | Set-Content -LiteralPath ".zip/SHA256SUMS" -Encoding ascii
+    - uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
       with:
-        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        filter-author: (|dependabot|renovate\\[bot\\]|dependabot\\[bot\\]|Renovate Bot)
-        filter: '[R|r]elease[d]\s+[v|V]\d(\.\d+){0,2}'
-        template: |
-          ## Bugs
-          {{fix}}
-          ## Feature
-          {{feat}}
-          ## Improve
-          {{refactor,perf,clean}}
-          ## Misc
-          {{chore,style,ci||🔶 Nothing change}}
-          ## Unknown
-          {{__unknown__}}
-    - uses: ncipollo/release-action@v1
-      with:
-        artifacts: ".zip/maya_umbrella_scanner-*.zip"
-        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        body: |
-          Comparing Changes: ${{ steps.changelog.outputs.compareurl }}
-
-          ${{ steps.changelog.outputs.changelog }}
+        artifacts: ".zip/maya_umbrella_scanner-*.zip,.zip/SHA256SUMS"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        generateReleaseNotes: true

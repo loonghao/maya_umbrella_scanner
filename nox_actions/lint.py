@@ -3,9 +3,18 @@ import nox
 from nox_actions.utils import PACKAGE_NAME
 
 
+ISORT_TARGETS = (
+    PACKAGE_NAME,
+    "nox_actions",
+    "tests",
+    "noxfile.py",
+    "skills/maya-umbrella-batch-antivirus/scripts/batch_scan.py",
+)
+
+
 def lint(session: nox.Session) -> None:
     session.install("isort", "ruff")
-    session.run("isort", "--check-only", PACKAGE_NAME)
+    session.run("isort", "--check-only", *ISORT_TARGETS)
     session.run("ruff", "check")
 
 

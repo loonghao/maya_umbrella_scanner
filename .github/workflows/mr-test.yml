@@ -7,14 +7,14 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        os: [ 'windows-2019' ]
-        python-version: ["3.10"]
+        os: [ 'windows-2022' ]
+        python-version: ["3.9", "3.10"]
       fail-fast: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -24,6 +24,16 @@ jobs:
       - name: lint
         run: |
           nox -s lint
+      - name: test
+        run: |
+          nox -s pytest
+      - name: validate agent skill discovery
+        if: matrix.python-version == '3.10'
+        env:
+          DISABLE_TELEMETRY: "1"
+        run: |
+          npx --yes skills@1.5.23 add . --list
       - name: test build
+        if: matrix.python-version == '3.10'
         run: |
           nox -s build-exe
