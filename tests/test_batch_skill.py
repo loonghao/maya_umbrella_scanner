@@ -71,6 +71,53 @@ def test_skill_description_exposes_maya_antivirus_intent_in_both_languages():
     assert "metadata:\n  openclaw:\n    os: [win32]" in skill_text
 
 
+def test_public_metadata_and_bilingual_readmes_share_discovery_contract():
+    english = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+    chinese = (REPOSITORY_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+    plugin = json.loads((REPOSITORY_ROOT / "plugin.json").read_text(encoding="utf-8"))
+    project_config = (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert "[简体中文](README.zh-CN.md)" in english
+    assert "[English](README.md)" in chinese
+
+    shared_contract = (
+        "maya_umbrella_scanner",
+        "maya_umbrella.exe",
+        "maya-umbrella-scanner",
+        "maya-umbrella-batch-antivirus",
+        "--approved-scan-report",
+        "--approved-scan-report-sha256",
+        "--confirm-clean",
+        "report_file_sha256",
+        "_virus",
+        "MAYA_UMBRELLA_IGNORE_BACKUP=true",
+        "skills/maya-umbrella-batch-antivirus/SKILL.md",
+        "skills/maya-umbrella-batch-antivirus/references/operation-contract.md",
+    )
+    assert all(term in english and term in chinese for term in shared_contract)
+
+    powershell_block = re.compile(r"^```powershell\n(?P<body>.*?)^```", re.MULTILINE | re.DOTALL)
+
+    def commands_without_translated_comments(text):
+        return [
+            "\n".join(line for line in match.group("body").splitlines() if not line.startswith("#")).strip()
+            for match in powershell_block.finditer(text)
+        ]
+
+    assert commands_without_translated_comments(english) == commands_without_translated_comments(chinese)
+
+    project_description = re.search(
+        r'^description = "(?P<description>.+)"$', project_config, re.MULTILINE
+    )
+    assert project_description
+    assert plugin["description"] == project_description.group("description")
+    assert all(
+        phrase in plugin["description"]
+        for phrase in ("Agent Skill", "known malware signatures", "Autodesk Maya", "Windows x64")
+    )
+    assert {"agent-skills", "maya-antivirus", "scene-security"} <= set(plugin["keywords"])
+
+
 def test_clawhub_release_workflow_uses_pinned_cli_and_catalog_metadata():
     workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "clawhub-skill.yml").read_text(
         encoding="utf-8"

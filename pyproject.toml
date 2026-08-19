@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "maya-umbrella-scanner"
 version = "0.2.0"
-description = "A portable version for maya umbrella scanner."
+description = "Agent Skill for scanning known malware signatures in Autodesk Maya .ma/.mb scenes with a portable Windows x64 CLI and approval-gated cleanup."
 authors = ["loonghao <hal.long@outlook.com>"]
 license = "MIT"
 readme = "README.md"
