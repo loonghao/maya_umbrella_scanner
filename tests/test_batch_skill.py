@@ -1,35 +1,22 @@
 """Behavior and packaging tests for the portable Agent Skill."""
 
 # Import built-in modules
-import importlib.util
 import json
 from pathlib import Path
+import re
 import shutil
-import sys
 
 # Import third-party modules
 import pytest
 
+# Import local modules
+from maya_umbrella_scanner import batch_cli as batch_scan
+from maya_umbrella_scanner.__version__ import __version__
+
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
 SKILL_ROOT = REPOSITORY_ROOT / "skills" / "maya-umbrella-batch-antivirus"
-SCRIPT_PATH = SKILL_ROOT / "scripts" / "batch_scan.py"
-
-
-def load_batch_scan():
-    spec = importlib.util.spec_from_file_location("maya_umbrella_batch_scan", SCRIPT_PATH)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    previous = sys.dont_write_bytecode
-    sys.dont_write_bytecode = True
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.dont_write_bytecode = previous
-    return module
-
-
-batch_scan = load_batch_scan()
+INSTALL_SCRIPT = SKILL_ROOT / "scripts" / "install_cli.ps1"
 
 
 def scanner_result_for(files, manifest):
@@ -58,7 +45,7 @@ def test_agent_plugin_and_skill_identity_match_layout():
         "extensions",
     }
     assert skill_text.startswith("---\nname: maya-umbrella-batch-antivirus\n")
-    assert SCRIPT_PATH.is_file()
+    assert INSTALL_SCRIPT.is_file()
 
 
 def test_portable_build_pins_the_tested_scanner_engine():
@@ -79,6 +66,46 @@ def test_portable_build_pins_the_tested_scanner_engine():
     assert 'requires = ["poetry-core==2.2.1"]' in project_config
     assert "python -m pip install poetry==2.2.1 nox==2026.2.9" in release_workflow
     assert "requirements-dev.txt" not in release_workflow
+
+
+def test_release_please_owns_and_synchronizes_product_versions():
+    project_config = (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    module_version_source = (REPOSITORY_ROOT / "maya_umbrella_scanner" / "__version__.py").read_text(
+        encoding="utf-8"
+    )
+    plugin = json.loads((REPOSITORY_ROOT / "plugin.json").read_text(encoding="utf-8"))
+    manifest = json.loads((REPOSITORY_ROOT / ".release-please-manifest.json").read_text(encoding="utf-8"))
+    release_config = json.loads((REPOSITORY_ROOT / "release-please-config.json").read_text(encoding="utf-8"))
+    release_workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "release-please.yml").read_text(
+        encoding="utf-8"
+    )
+    publish_workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "python-publish.yml").read_text(
+        encoding="utf-8"
+    )
+    poetry_section = project_config.split("[tool.poetry]", 1)[1].split("[", 1)[0]
+    project_version = re.search(r'^version = "([^"]+)"$', poetry_section, re.MULTILINE)
+
+    assert project_version
+    assert project_version.group(1) == plugin["version"] == manifest["."] == __version__
+    assert "# x-release-please-version" in module_version_source
+    assert "tool.commitizen" not in project_config
+    assert not (REPOSITORY_ROOT / ".github" / "workflows" / "bumpversion.yml").exists()
+    assert release_config["packages"]["."]["release-type"] == "python"
+    assert {entry["path"] for entry in release_config["packages"]["."]["extra-files"]} == {
+        "maya_umbrella_scanner/__version__.py",
+        "plugin.json",
+    }
+    assert "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7" in release_workflow
+    assert "secrets.PERSONAL_ACCESS_TOKEN" in release_workflow
+    assert "ncipollo/release-action" not in publish_workflow
+    assert "gh release upload" in publish_workflow
+    assert "Existing release ZIP and SHA256SUMS disagree" in publish_workflow
+    assert "bind the checksum to those" in publish_workflow
+    assert 'state -eq "starter"' in publish_workflow
+    assert 'state -ne "uploaded"' in publish_workflow
+    assert "--method DELETE" in publish_workflow
+    assert publish_workflow.index('state -eq "starter"') < publish_workflow.index("$archiveAssets = @(")
+    assert "--clobber" not in publish_workflow
 
 
 def test_scan_reports_infection_without_running_maya(tmp_path):

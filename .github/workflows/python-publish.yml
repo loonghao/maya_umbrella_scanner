@@ -1,58 +1,174 @@
-name: Upload Python Package
+name: Publish portable CLI
 
 on:
   push:
     tags:
       - "v*"
 
+concurrency:
+  group: portable-cli-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      max-parallel: 3
-      matrix:
-        os: [ 'windows-2022' ]
-        python-version: ["3.10"]
-      fail-fast: false
+    runs-on: windows-2022
+    timeout-minutes: 30
     permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
-      id-token: write
       contents: write
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      with:
-        fetch-depth: 0
-    - name: Set up Python
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install poetry==2.2.1 nox==2026.2.9
-        poetry --version
-        poetry build
-    - name: Verify tag version
-      id: release_version
-      shell: pwsh
-      run: |
-        $tagVersion = "${{ github.ref_name }}" -replace '^v', ''
-        $projectVersion = poetry version --short
-        if ($tagVersion -ne $projectVersion) {
-          throw "Tag version $tagVersion does not match project version $projectVersion"
-        }
-        "version=$tagVersion" >> $env:GITHUB_OUTPUT
-    - name: build exe
-      id: build_exe
-      run: |
-        nox -s build-exe -- --release --version ${{ steps.release_version.outputs.version }}
-    - name: Generate artifact checksum
-      shell: pwsh
-      run: |
-        $archive = Get-Item ".zip/maya_umbrella_scanner-${{ steps.release_version.outputs.version }}.zip"
-        $hash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-        "$hash  $($archive.Name)" | Set-Content -LiteralPath ".zip/SHA256SUMS" -Encoding ascii
-    - uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
-      with:
-        artifacts: ".zip/maya_umbrella_scanner-*.zip,.zip/SHA256SUMS"
-        token: ${{ secrets.GITHUB_TOKEN }}
-        generateReleaseNotes: true
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.10"
+      - name: Install pinned build tools
+        run: |
+          python -m pip install poetry==2.2.1 nox==2026.2.9
+          poetry --version
+          poetry build
+      - name: Verify tag and package versions
+        id: release_version
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          $tagVersion = $env:TAG_NAME -replace '^v', ''
+          $projectVersion = poetry version --short
+          $moduleVersion = python -c "from maya_umbrella_scanner.__version__ import __version__; print(__version__)"
+          $pluginVersion = (Get-Content -LiteralPath plugin.json -Raw | ConvertFrom-Json).version
+          if (@($projectVersion, $moduleVersion, $pluginVersion) | Where-Object { $_ -ne $tagVersion }) {
+            throw "Tag version $tagVersion does not match every package version"
+          }
+          $tagCommit = git rev-list -n 1 $env:TAG_NAME
+          if ($tagCommit -ne $env:EXPECTED_SHA) {
+            throw "Tag commit $tagCommit does not match workflow SHA $env:EXPECTED_SHA"
+          }
+          "version=$tagVersion" >> $env:GITHUB_OUTPUT
+      - name: Build portable CLI archive
+        env:
+          VERSION: ${{ steps.release_version.outputs.version }}
+        run: |
+          nox -s build-exe -- --release --version $env:VERSION
+      - name: Generate artifact checksum
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.release_version.outputs.version }}
+        run: |
+          $archive = Get-Item ".zip/maya_umbrella_scanner-$env:VERSION.zip"
+          $hash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($archive.Name)" | Set-Content -LiteralPath ".zip/SHA256SUMS" -Encoding ascii
+      - name: Wait for Release Please release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          $found = $false
+          foreach ($attempt in 1..30) {
+            gh release view $env:TAG_NAME --repo $env:GITHUB_REPOSITORY *> $null
+            if ($LASTEXITCODE -eq 0) {
+              $found = $true
+              break
+            }
+            Start-Sleep -Seconds 10
+          }
+          if (-not $found) {
+            throw "Release Please release $env:TAG_NAME was not available after five minutes"
+          }
+      - name: Reconcile verified release assets without overwriting
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          VERSION: ${{ steps.release_version.outputs.version }}
+        run: |
+          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:TAG_NAME" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to read release $env:TAG_NAME"
+          }
+          $archiveName = "maya_umbrella_scanner-$env:VERSION.zip"
+          $archivePath = (Resolve-Path ".zip/$archiveName").Path
+          $checksumPath = (Resolve-Path ".zip/SHA256SUMS").Path
+          $managedNames = @($archiveName, "SHA256SUMS")
+          $usableAssets = @()
+          foreach ($asset in @($release.assets)) {
+            if ($asset.name -notin $managedNames) {
+              continue
+            }
+            if ($asset.state -eq "starter") {
+              # GitHub documents this as an empty artifact left by a failed
+              # upload. Delete only that incomplete object before retrying.
+              $assetId = [long]$asset.id
+              gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/releases/assets/$assetId" *> $null
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to delete incomplete starter asset $($asset.name)"
+              }
+              continue
+            }
+            if ($asset.state -ne "uploaded" -or [long]$asset.size -le 0) {
+              throw "Release asset $($asset.name) has unusable state $($asset.state) or size $($asset.size)"
+            }
+            $usableAssets += $asset
+          }
+          $archiveAssets = @($usableAssets | Where-Object { $_.name -eq $archiveName })
+          $checksumAssets = @($usableAssets | Where-Object { $_.name -eq "SHA256SUMS" })
+          if ($archiveAssets.Count -gt 1 -or $checksumAssets.Count -gt 1) {
+            throw "Release contains duplicate portable CLI assets"
+          }
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = "application/octet-stream"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $downloads = @()
+          try {
+            $effectiveArchivePath = $archivePath
+            if ($archiveAssets.Count -eq 1) {
+              $effectiveArchivePath = Join-Path $env:RUNNER_TEMP ([Guid]::NewGuid().ToString("N") + "-$archiveName")
+              $downloads += $effectiveArchivePath
+              Invoke-WebRequest -Uri $archiveAssets[0].url -Headers $headers -OutFile $effectiveArchivePath
+            }
+            $effectiveArchiveHash = (Get-FileHash -LiteralPath $effectiveArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+
+            if ($checksumAssets.Count -eq 1) {
+              $remoteChecksumPath = Join-Path $env:RUNNER_TEMP ([Guid]::NewGuid().ToString("N") + "-SHA256SUMS")
+              $downloads += $remoteChecksumPath
+              Invoke-WebRequest -Uri $checksumAssets[0].url -Headers $headers -OutFile $remoteChecksumPath
+              $checksumPattern = '^(?<hash>[0-9A-Fa-f]{64})[ \t]+\*?' + [Regex]::Escape($archiveName) + '$'
+              $checksumMatches = @(
+                [IO.File]::ReadAllLines($remoteChecksumPath) |
+                  ForEach-Object { [Regex]::Match($_, $checksumPattern) } |
+                  Where-Object { $_.Success }
+              )
+              if ($checksumMatches.Count -ne 1) {
+                throw "Existing SHA256SUMS does not contain one strict entry for $archiveName"
+              }
+              $declaredHash = $checksumMatches[0].Groups['hash'].Value.ToLowerInvariant()
+              if ($declaredHash -ne $effectiveArchiveHash) {
+                throw "Existing release ZIP and SHA256SUMS disagree"
+              }
+            }
+
+            if ($archiveAssets.Count -eq 0) {
+              gh release upload $env:TAG_NAME $archivePath --repo $env:GITHUB_REPOSITORY
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to upload release asset $archiveName"
+              }
+            }
+            if ($checksumAssets.Count -eq 0) {
+              # If a prior run uploaded only the ZIP, bind the checksum to those
+              # exact bytes instead of requiring a byte-identical compiler rerun.
+              "$effectiveArchiveHash  $archiveName" | Set-Content -LiteralPath $checksumPath -Encoding ascii
+              gh release upload $env:TAG_NAME $checksumPath --repo $env:GITHUB_REPOSITORY
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to upload release asset SHA256SUMS"
+              }
+            }
+          } finally {
+            foreach ($download in $downloads) {
+              Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
+            }
+          }
