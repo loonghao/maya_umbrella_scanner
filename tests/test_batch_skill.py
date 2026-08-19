@@ -48,6 +48,69 @@ def test_agent_plugin_and_skill_identity_match_layout():
     assert INSTALL_SCRIPT.is_file()
 
 
+def test_skill_description_exposes_maya_antivirus_intent_in_both_languages():
+    skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+    match = re.search(r"^description: (?P<description>.+)$", skill_text, re.MULTILINE)
+
+    assert match
+    description = match.group("description")
+    assert len(description) <= 220
+    assert all(
+        phrase in description
+        for phrase in (
+            "Maya杀毒",
+            "Maya病毒扫描",
+            "Maya病毒查杀",
+            "清理Maya病毒",
+            "病毒查杀",
+            "Maya antivirus",
+        )
+    )
+    assert "not general antivirus" in description
+    assert all(phrase not in description for phrase in ("恶意脚本检测", "场景清理"))
+    assert "metadata:\n  openclaw:\n    os: [win32]" in skill_text
+
+
+def test_clawhub_release_workflow_uses_pinned_cli_and_catalog_metadata():
+    workflow = (REPOSITORY_ROOT / ".github" / "workflows" / "clawhub-skill.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "  release:\n    types: [published]" in workflow
+    assert "github.event_name != 'release' || github.event.release.prerelease == false" in workflow
+    assert "github.event_name == 'pull_request' && github.ref || 'publish'" in workflow
+    assert 'CLAWHUB_CLI_VERSION: "0.23.3"' in workflow
+    assert "npm install --global --ignore-scripts --no-audit --no-fund" in workflow
+    assert '"$(clawhub --cli-version)" == "$CLAWHUB_CLI_VERSION"' in workflow
+    assert '"$(git rev-parse HEAD)" == "$GITHUB_SHA"' in workflow
+    assert '"$(git status --short)"' in workflow
+    assert "npx --yes" not in workflow
+    assert "--categories security,operations" in workflow
+    assert "--topics maya,antivirus,malware,virus-scan,scene-cleanup" in workflow
+    assert 'receipt.status === "unchanged" && receipt.version === receipt.latestVersion' in workflow
+    assert 'receipt.status === "would-publish" && receipt.latestVersion === null' in workflow
+    assert "publish_version=" in workflow
+    assert '--version "$publish_version"' in workflow
+    assert "secrets.CLAWHUB_TOKEN" in workflow
+    assert '"$GITHUB_REF" != "refs/heads/main"' in workflow
+    assert "validate_clawhub_publish.py" in workflow
+    assert 'rm -f -- "$CLAWHUB_CONFIG_PATH"' in workflow
+    assert "clawhub-*.json" not in workflow
+    assert "openclaw/clawhub/.github/workflows/skill-publish.yml" not in workflow
+
+    install_index = workflow.index("- name: Install pinned ClawHub CLI")
+    write_config_index = workflow.index("- name: Write ephemeral ClawHub configuration")
+    publish_index = workflow.index("- name: Preview and optionally publish the Skill")
+    assert install_index < write_config_index < publish_index
+
+    write_config_step = workflow.partition("- name: Write ephemeral ClawHub configuration")[
+        2
+    ].partition("\n      - name:")[0]
+    assert "CLAWHUB_CONFIG_PATH: ${{ runner.temp }}/clawhub-config.json" in write_config_step
+    assert "CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}" in write_config_step
+    assert "process.env.CLAWHUB_CONFIG_PATH" in write_config_step
+
+
 def test_portable_build_pins_the_tested_scanner_engine():
     build_config = (REPOSITORY_ROOT / "pyoxidizer.bzl").read_text(encoding="utf-8")
     project_config = (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8")

@@ -89,11 +89,13 @@ ClawHub 分发的是 Skill 子目录，不是仅含根 `plugin.json` 的完整 A
 ```powershell
 npx --yes clawhub@0.23.3 skill publish .\skills\maya-umbrella-batch-antivirus `
   --owner loonghao `
+  --categories security,operations `
+  --topics maya,antivirus,malware,virus-scan,scene-cleanup `
   --dry-run `
   --json
 ```
 
-正式发布前先执行 `npx --yes clawhub@0.23.3 login`；随后从上述命令移除 `--dry-run`，或在 GitHub Actions 手动运行 `ClawHub Skill` workflow（需要仓库 secret `CLAWHUB_TOKEN`）。公开版本通过安全审核并可见后，可通过 CLI 安装：
+正式发布前先执行 `npx --yes clawhub@0.23.3 login`。仓库配置 `CLAWHUB_TOKEN` secret 后，每个正式（非 prerelease）GitHub Release 会自动运行 `ClawHub Skill` workflow；`workflow_dispatch` 仅允许从 `main` 手动首发或受控补发。工作流固定使用 ClawHub CLI 0.23.3，首次发布时设置 `security,operations` 分类与检索 topics，后续同步省略这两个参数以保持内容未变化时的幂等性。它保存结构化回执，并把 `pending-publication` 或 `submitted` 作为“已提交、等待公开验证”，而不是误报成上传失败。公开版本通过安全审核并可见后，可通过 CLI 安装：
 
 ```powershell
 openclaw skills install @loonghao/maya-umbrella-batch-antivirus
