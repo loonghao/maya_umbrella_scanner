@@ -4,6 +4,19 @@
 
 - **deps**: update dependency maya-umbrella to ^0.18.0
 
+## [0.2.1](https://github.com/loonghao/maya_umbrella_scanner/compare/v0.2.0...v0.2.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* repair ClawHub publishing and Maya antivirus routing ([ab96a82](https://github.com/loonghao/maya_umbrella_scanner/commit/ab96a825acf94fe673f02a57c618ce8e4f459610))
+
+
+### Documentation
+
+* add bilingual geo-optimized readmes ([793b8cf](https://github.com/loonghao/maya_umbrella_scanner/commit/793b8cf4d1b06e7f7c0d6613361a0d1ae22af6fc))
+* highlight agent skills support ([60bdaee](https://github.com/loonghao/maya_umbrella_scanner/commit/60bdaee9ddbe8c1542e3c0b9e6b2c4a3c8d554ca))
+
 ## [0.2.0](https://github.com/loonghao/maya_umbrella_scanner/compare/v0.1.8...v0.2.0) (2026-08-19)
 
 
