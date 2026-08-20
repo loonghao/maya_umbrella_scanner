@@ -14,7 +14,7 @@ maya-umbrella = "0.18.0"
 click = "8.1.7"
 
 [build-system]
-requires = ["poetry-core==2.2.1"]
+requires = ["poetry-core==2.4.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
