@@ -11,7 +11,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.9"
 maya-umbrella = "0.18.0"
-click = "8.1.7"
+click = "8.4.2"
 
 [build-system]
 requires = ["poetry-core==2.2.1"]
